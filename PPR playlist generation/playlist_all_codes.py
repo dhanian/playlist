@@ -6,6 +6,8 @@ import scipy.sparse
 import sys
 import sqlite3
 import time
+from snap import *
+from collections import defaultdict
 
 """ Generate song index database """
 
@@ -145,3 +147,57 @@ scores = [rank[i] for i in playlist]
 print "Playlist generated in %.3f seconds" % (t1-t0)
 print "Playlist(showing first 20 only)"
 print playlist[:listLength]
+
+"""Community Detection"""
+percget = 0.5
+num = 0
+G1 = TUNGraph.New()
+
+conn = sqlite3.connect("lastfm_similars.db")
+sql = "SELECT tid, target FROM similars_src LIMIT 10000"
+res = conn.execute(sql)
+alldata = res.fetchall()
+
+# create mapping dt from name to node id
+dt = {}
+w = []; pp = []
+for data in alldata:
+    tup = []
+    target =  data[1]
+    pc = target.split(",")
+    dt[data[0]] = num
+    pp.append(data[0])
+    num += 1
+    for i in range(0,len(pc),2):
+	tup.append((float(pc[i+1]),pc[i]))
+        dt[pc[i]] = num
+        num += 1
+    ss = sorted(tup, reverse=True)[:int(len(tup)*percget)]
+    w.append(ss)
+
+pairs = zip(pp, w)
+
+# create nodes
+idToName = {}
+for key, val in dt.iteritems():
+    G1.AddNode(val)
+    idToName[val] = key
+
+# create edges
+for x,y in pairs:
+    srcid = dt[x]    
+    for a in y:
+        destid = dt[a[1]]
+        G1.AddEdge(srcid, destid)
+
+print "Graph loaded"
+
+# two algorithm for community detection
+CmtyV = TCnComV()
+#modularity = CommunityCNM(G1, CmtyV)
+modularity = CommunityGirvanNewman(G1, CmtyV)
+for Cmty in CmtyV:
+    print "Community: "
+    for NI in Cmty:
+        print NI
+print "The modularity of the network is %f" % modularity
