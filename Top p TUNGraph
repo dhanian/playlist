@@ -47,4 +47,12 @@ for x,y in pairs:
 
 print "Graph loaded"
 
-
+# two algorithm for community detection
+CmtyV = TCnComV()
+#modularity = CommunityCNM(G1, CmtyV)
+modularity = CommunityGirvanNewman(G1, CmtyV)
+for Cmty in CmtyV:
+    print "Community: "
+    for NI in Cmty:
+        print NI
+print "The modularity of the network is %f" % modularity
